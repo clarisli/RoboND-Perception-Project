@@ -28,7 +28,7 @@ The goal of this project is to implement a perception pipeline, correctly identi
 [image13]: ./misc_images/test3.png
 [image14]: ./misc_images/confusion.png
 
-# Project Setup
+## Project Setup
 For this setup, catkin_ws is the name of active ROS Workspace, if your workspace name is different, change the commands accordingly
 If you do not have an active ROS workspace, you can create one by:
 
@@ -134,11 +134,11 @@ $ sudo apt-get install pcl-tools
 
 
 
-### Perception Pipeline
+## Perception Pipeline
 
-#### 1. Calibration, Fitlering, and Segmentation
+### 1. Calibration, Fitlering, and Segmentation
 
-##### 1.1 Statistical Outlier Filtering
+#### 1.1 Statistical Outlier Filtering
 
 I first applied PCL's StatisticalOutlierRemoval filter to remove noise. For each point in the point cloud, it computes the distance to all of its neighbors, and then calculates a mean distance. All points whose mean distances are outside of an interval are considered to be outliers and removed from the point cloud.
 
@@ -148,13 +148,13 @@ I did this in lines 61 to 71 in `project.py`.
 :-------------------------:|:-------------------------:|
 |![alt text][image2]       | ![alt text][image1]     | 
 
-##### 1.2 Voxel Grid Downsampling
+#### 1.2 Voxel Grid Downsampling
 
 To save the comptational resource, I downsampled the point cloud with VoxelGrid Downsampling Filter. The goal was to derive a point cloud that has fewer points but should still do a good job of representing the input point cloud as a whole.
 
 ![alt text][image10]
 
-##### 1.3 Pass Through Filtering
+#### 1.3 Pass Through Filtering
 
 To further remove useless data from the point cloud, I applied Pass Through Filter to define the region of interest.
 
@@ -164,7 +164,7 @@ To further remove useless data from the point cloud, I applied Pass Through Filt
 | Passthrough y-axis       | Passthrough x-axis      | 
 |![alt text][image8]       | ![alt text][image9]     | 
 
-##### 1.4 RANSAC Plane Fitting
+#### 1.4 RANSAC Plane Fitting
 
 I then used RANSAC plane fitting to remove the table from the scene. The RANSAC algorithm assumes that all of the data in a dataset is composed of both inliers and outliers, where inliers can be defined by a particular model with a specific set of parameters, while outliers do not fit that model and hence can be discarded. With a plane model, the inlier is the table, and the outliers are the objects.
 
@@ -176,17 +176,17 @@ I then used RANSAC plane fitting to remove the table from the scene. The RANSAC 
 
 ##### 2.1 Euclidean Clustering
 
-With the unwanted data filtered out, the goal of this step was to segment the remaining points into individual objects. I applied Euclidean Clustering to clster the points closer to each other together. 
+With the unwanted data filtered out, the next step is to segment the remaining points into individual objects. I applied Euclidean Clustering to cluster the points closer to each other together. 
 
 I first converted the **XYZRGB** point cloud to **XYZ**, because PCL's Euclidean Clustering algorithm requires a point cloud with only spatial information. Then I constructed a k-d tree from this point cloud and performed the cluster extraction. The results are visualized below:
 
 ![alt text][image3]
 
-#### 3. Object Recognition
+### 3. Object Recognition
 
 The goal is to reliably locate the things you're looking for, regardless of its position and orientation. The key here to identify the features that best describe that object.
 
-##### 3.1 Feature Extraction
+#### 3.1 Feature Extraction
 
 I used the color and shape as the features:
 
@@ -197,20 +197,20 @@ The hitograms were normalized to accomodate with the variations in image size.
 
 I did this in `/sensor_stick/src/sensor_stick/features.py` and `/sensor_stick/scripts/capture_features.py`.
 
-##### 3.2 Train the Model
+#### 3.2 Train the Model
 
-I used the feature to train the model with Support Vector Machine (SVM). I obtained an accuracy of 98% by tuning the number of orientations to 128 and number of histogram bins to 64. Here's the confusion chart:
+I used the features above to train the model with Support Vector Machine (SVM) and obtained an accuracy of 98% - I tuned the number of orientations to 128 and number of histogram bins to 64. Here's the confusion chart:
 
 ![alt text][image14]
 
-I did this in `train_svm.py`.
+I did this in `/sensor_stick/scripts/train_svm.py`.
 
 
-### Pick and Place Setup
+## Pick and Place Setup
 
 With the detected objects from above, I composed the necessary messages to send to the `pick_place_routine` service.
 
-I obtained the ground truth pick lists, i.e., objects to be collected, from the `pick_list_*.yaml` files under `/pr2_robot/config`. The `pick_list_1.yaml` file looks like this:
+The ground truth pick lists, i.e., objects to be collected can be found at the `pick_list_*.yaml` files under `/pr2_robot/config`. For example, `pick_list_1.yaml` file looks like this:
 
 ```
 object_list:
@@ -222,7 +222,7 @@ object_list:
     group: red
 ```
 
-For each item in the pick list with detected objects, and only proceed to pick and place those accurately identified items.
+By verifying each item in the pick list with detected objects, I only proceed to pick and place the accurately identified items.
 
 The pick and place operation is implemented as a request-response system, the format of the service is defined in `PickPlace.srv` under `pr2_robot/srv`:
 
@@ -257,7 +257,7 @@ dropbox:
 
 Based on the group associated with each object, I assigned the arm_name with the same name of the dropbox under the same group. Then I used the same dropbox's position for place_pose. 
 
-I created yaml files for 3 scenes. I did this in the function `pr2_mover()` in `project.py`.
+I did this in the function `pr2_mover()` in `/pr_robot/scripts/project.py`.
 
 ### Results
 
@@ -283,5 +283,4 @@ For each test scene, I output the request parameters to a `output_*.yaml`, and s
 
 ### Future Works
 * Implement collision mapping
-* Use `pick_lace_server to execute the pick and place operation
-* Optimize the model to improve the object recognition accuracy
+* Use `pick_lace_server` to execute the pick and place operation
